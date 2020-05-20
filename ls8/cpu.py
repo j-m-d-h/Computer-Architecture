@@ -109,10 +109,18 @@ class CPU:
         self.pc += 2
 
     def PUSH(self):
-        pass
+        self.register[self.SP] -= 1
+        reg_num = self.ram_read(self.pc+1)
+        stack_address = self.register[self.SP]
+        self.ram_write(self.register[reg_num], stack_address)
+        self.pc += 2
 
     def POP(self):
-        pass
+        reg_num = self.ram_read(self.pc+1)
+        stack_address = self.register[self.SP]
+        self.register[reg_num] = self.ram_read(stack_address)
+        self.register[self.SP] += 1
+        self.pc += 2
 
     def LDI(self):
         self.register[self.ram_read(self.pc+1)] = self.ram_read(self.pc+2)
