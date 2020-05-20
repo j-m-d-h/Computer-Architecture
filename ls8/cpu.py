@@ -7,27 +7,44 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.SP = 7
+        self.IS = 6
+        self.IM = 5
+        self.register = [0] * 8
+        self.register[self.SP] = 0xF4
+        self.ram = [0] * 256
+        self.pc = 0
+
+        self.instruction_table = {
+            0:self.NOP,
+            1:self.HALT,
+            69:self.PUSH,
+            70:self.POP,
+            71:self.PRN,
+            130:self.LDI,
+            162:self.MUL
+        }
+
+    def ram_read(self, address):
+        return self.ram[address]
+
+    def ram_write(self, data, address):
+        self.ram[address] = data
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
+        program = []
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
+        with open(sys.argv[1], 'r') as file:
+            for line in file:
+                string1 = line.split("#")[0].strip()
+                if string1 == '':
+                    continue
+                program.append(int(string1,2))
         for instruction in program:
-            self.ram[address] = instruction
+            self.ram_write(instruction, address)
             address += 1
 
 
@@ -35,8 +52,17 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+            self.register[reg_a] += self.register[reg_b]
+        elif op == 'AND':
+            self.register[reg_a] = self.register[reg_a] & self.register[reg_b]
+        elif op == 'SUB':
+            self.register[reg_a] -= self.register[reg_b]
+        elif op == "INC":
+            self.register[reg_a] += 1
+        elif op == "DEC":
+            self.register[reg_a] -= 1
+        elif op == "MUL":
+            self.register[reg_a] *= self.register[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -56,10 +82,45 @@ class CPU:
         ), end='')
 
         for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+            print(" %02X" % self.register[i], end='')
 
         print()
 
     def run(self):
         """Run the CPU."""
+        ir = []
+        self.on = True
+        while self.on:
+            instruction = self.ram_read(self.pc)
+            ir.append(instruction)
+            if instruction in self.instruction_table:
+                self.instruction_table[instruction]()
+            else:
+                print(f'Error: invalid instruction {instruction} at {self.pc}')
+                break
+        sys.exit(1)
+
+    def HALT(self):
+        self.on = False
+
+    def PRN(self):
+        data = self.register[self.ram_read(self.pc+1)]
+        print(data)
+        self.pc += 2
+
+    def PUSH(self):
         pass
+
+    def POP(self):
+        pass
+
+    def LDI(self):
+        self.register[self.ram_read(self.pc+1)] = self.ram_read(self.pc+2)
+        self.pc += 3
+
+    def MUL(self):
+        self.alu('MUL', self.ram_read(self.pc+1), self.ram_read(self.pc+2))
+        self.pc += 3
+
+    def NOP(self):
+        self.pc += 1
