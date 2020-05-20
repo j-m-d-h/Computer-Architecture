@@ -15,14 +15,17 @@ class CPU:
         self.ram = [0] * 256
         self.pc = 0
 
+        self.alu_table = {
+            162:'MUL'
+        }
+
         self.instruction_table = {
             0:self.NOP,
             1:self.HALT,
             69:self.PUSH,
             70:self.POP,
             71:self.PRN,
-            130:self.LDI,
-            162:self.MUL
+            130:self.LDI
         }
 
     def ram_read(self, address):
@@ -53,16 +56,22 @@ class CPU:
 
         if op == "ADD":
             self.register[reg_a] += self.register[reg_b]
+            self.pc += 3
         elif op == 'AND':
             self.register[reg_a] = self.register[reg_a] & self.register[reg_b]
+            self.pc += 3
         elif op == 'SUB':
             self.register[reg_a] -= self.register[reg_b]
+            self.pc += 3
         elif op == "INC":
             self.register[reg_a] += 1
+            self.pc += 2
         elif op == "DEC":
             self.register[reg_a] -= 1
+            self.pc += 2
         elif op == "MUL":
             self.register[reg_a] *= self.register[reg_b]
+            self.pc += 3
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -93,7 +102,10 @@ class CPU:
         while self.on:
             instruction = self.ram_read(self.pc)
             ir.append(instruction)
-            if instruction in self.instruction_table:
+            if instruction in self.alu_table:
+                self.alu(self.alu_table[instruction],
+                self.ram_read(self.pc+1), self.ram_read(self.pc+2))
+            elif instruction in self.instruction_table:
                 self.instruction_table[instruction]()
             else:
                 print(f'Error: invalid instruction {instruction} at {self.pc}')
@@ -124,10 +136,6 @@ class CPU:
 
     def LDI(self):
         self.register[self.ram_read(self.pc+1)] = self.ram_read(self.pc+2)
-        self.pc += 3
-
-    def MUL(self):
-        self.alu('MUL', self.ram_read(self.pc+1), self.ram_read(self.pc+2))
         self.pc += 3
 
     def NOP(self):
